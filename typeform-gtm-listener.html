@@ -1,0 +1,45 @@
+<script>
+/* Typeform listener by MD Niamul - mdniamul.com
+   Fires typeform_form_submit when an embedded Typeform (standard,
+   popup, slider, popover or side tab) is submitted, and
+   typeform_form_start when someone starts it. */
+(function () {
+  if (window.__mdnTypeformBasic) return; // tag fired twice: keep one copy
+  window.__mdnTypeformBasic = true;
+  window.dataLayer = window.dataLayer || [];
+  var TF = /^https:\/\/([a-z0-9-]+\.)*typeform\.com$/i; // form.typeform.com, EU and account subdomains
+  var sent = {};
+
+  // Form ID from the message, or from the iframe that sent it (/to/FORMID)
+  function formIdFor(d, src) {
+    if (d.formId) return String(d.formId);
+    var frames = document.getElementsByTagName('iframe');
+    for (var i = 0; i < frames.length; i++) {
+      if (frames[i].contentWindow === src) {
+        var m = (frames[i].src || '').match(/\/to\/([A-Za-z0-9]+)/);
+        return m ? m[1] : '';
+      }
+    }
+    return '';
+  }
+
+  window.addEventListener('message', function (e) {
+    if (!e || !TF.test(e.origin)) return;
+    var d = e.data;
+    if (typeof d === 'string') { try { d = JSON.parse(d); } catch (err) { return; } }
+    if (!d || typeof d !== 'object') return;
+    var name = d.type === 'form-submit' ? 'typeform_form_submit' : d.type === 'form-started' ? 'typeform_form_start' : '';
+    if (!name) return;
+    var formId = formIdFor(d, e.source);
+    var key = name + '|' + (d.responseId || formId + '|' + Math.floor(new Date().getTime() / 3000));
+    if (sent[key]) return; // one push per response
+    sent[key] = true;
+    window.dataLayer.push({
+      event: name,
+      form_id: formId,
+      response_id: d.responseId ? String(d.responseId) : '',
+      page_path: window.location.pathname
+    });
+  }, false);
+})();
+</script>
